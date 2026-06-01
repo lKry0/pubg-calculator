@@ -130,12 +130,117 @@ const app = (() => {
   }
 
   // ── EVENTS ────────────────────────────────────────────────────────────────
-  function getPos(e) {
+  function canvasPos(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
-    if (e.touches) return [e.touches[0].clientX - r.left, e.touches[0].clientY - r.top];
-    return [e.clientX - r.left, e.clientY - r.top];
+    return [clientX - r.left, clientY - r.top];
   }
 
+  function getPos(e) {
+    if (e.touches && e.touches.length)
+      return canvasPos(e.touches[0].clientX, e.touches[0].clientY);
+    return canvasPos(e.clientX, e.clientY);
+  }
+
+  // touch state
+  let pinchStartDist   = null;
+  let pinchStartZoom   = null;
+  let pinchStartOffset = null;
+  let pinchMidStart    = null;
+  let touchMoved       = false;
+
+  function touchDist(t) {
+    const dx = t[0].clientX - t[1].clientX;
+    const dy = t[0].clientY - t[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function touchMid(t) {
+    const r = canvas.getBoundingClientRect();
+    return [
+      (t[0].clientX + t[1].clientX) / 2 - r.left,
+      (t[0].clientY + t[1].clientY) / 2 - r.top,
+    ];
+  }
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (!mapImage) return;
+    touchMoved = false;
+
+    if (e.touches.length === 1) {
+      isDragging = false;
+      dragStart  = getPos(e);
+      dragOffset = [offsetX, offsetY];
+      pinchStartDist = null;
+    } else if (e.touches.length === 2) {
+      pinchStartDist   = touchDist(e.touches);
+      pinchStartZoom   = zoomLevel;
+      pinchMidStart    = touchMid(e.touches);
+      pinchStartOffset = [offsetX, offsetY];
+      dragStart = null;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!mapImage) return;
+
+    if (e.touches.length === 2 && pinchStartDist !== null) {
+      // pinch-to-zoom
+      touchMoved = true;
+      const currentDist = touchDist(e.touches);
+      const scale       = currentDist / pinchStartDist;
+      const newZoom     = Math.max(0.3, Math.min(16, pinchStartZoom * scale));
+      const mid         = touchMid(e.touches);
+      const ratio       = newZoom / pinchStartZoom;
+
+      offsetX   = mid[0] - (pinchMidStart[0] - pinchStartOffset[0]) * ratio - (pinchMidStart[0] - mid[0]) * ratio;
+      offsetY   = mid[1] - (pinchMidStart[1] - pinchStartOffset[1]) * ratio - (pinchMidStart[1] - mid[1]) * ratio;
+      zoomLevel = newZoom;
+      updateZoomDisplay();
+      draw();
+    } else if (e.touches.length === 1 && dragStart) {
+      // single-finger drag
+      const [x, y] = getPos(e);
+      const dx = x - dragStart[0], dy = y - dragStart[1];
+      if (Math.abs(dx) + Math.abs(dy) > 4) {
+        touchMoved = true;
+        isDragging = true;
+        offsetX = dragOffset[0] + dx;
+        offsetY = dragOffset[1] + dy;
+        draw();
+      }
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (!mapImage) return;
+
+    if (e.touches.length < 2) {
+      pinchStartDist = null;
+    }
+
+    // tap to place point — only when single finger and not moved
+    if (e.changedTouches.length === 1 && !touchMoved && !isDragging && pinchStartDist === null) {
+      const r = canvas.getBoundingClientRect();
+      const cx = e.changedTouches[0].clientX - r.left;
+      const cy = e.changedTouches[0].clientY - r.top;
+      const [mx, my] = toMap(cx, cy);
+      if (mx >= 0 && mx <= mapSize && my >= 0 && my <= mapSize) {
+        if (mode === 'A') { pointA = [mx, my]; setMode('B'); }
+        else              { pointB = [mx, my]; setMode('A'); }
+        updateInfo();
+        draw();
+      }
+    }
+
+    isDragging = false;
+    dragStart  = null;
+    touchMoved = false;
+  }, { passive: false });
+
+  // ── MOUSE EVENTS ──
   function onMouseDown(e) {
     if (!mapImage) return;
     isDragging = false;
