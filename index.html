@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PUBG Distance Calculator</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <canvas id="map-canvas"></canvas>
+
+  <!-- TOP-LEFT: logo + map select -->
+  <div id="hud-tl">
+    <div id="logo">◎ PUBG <span class="logo-accent">DISTANCE</span></div>
+    <div id="map-select-row">
+      <label for="map-select">Карта</label>
+      <select id="map-select">
+        <option value="erangel">Erangel — 8×8 км</option>
+        <option value="miramar">Miramar — 8×8 км</option>
+        <option value="vikendi">Vikendi — 8×8 км</option>
+        <option value="rondo">Rondo — 8×8 км</option>
+        <option value="taego">Taego — 8×8 км</option>
+        <option value="deston">Deston — 8×8 км</option>
+        <option value="sanhok">Sanhok — 4×4 км</option>
+      </select>
+      <div id="map-size-display" class="size-badge">8 × 8 км</div>
+    </div>
+  </div>
+
+  <!-- TOP-RIGHT: zoom -->
+  <div id="hud-tr">
+    <button class="zoom-btn" onclick="app.zoom(1.3)">+</button>
+    <div id="zoom-level">×1.0</div>
+    <button class="zoom-btn" onclick="app.zoom(1/1.3)">−</button>
+    <button class="zoom-btn small" onclick="app.resetZoom()">⊡</button>
+  </div>
+
+  <!-- BOTTOM-LEFT: points + distance -->
+  <div id="hud-bl">
+    <div class="hud-panel">
+      <div class="hud-row">
+        <button class="mode-btn active-a" id="btn-a" onclick="app.setMode('A')">
+          <span class="dot dot-a"></span> A
+        </button>
+        <span class="coord-value" id="coord-a">не задана</span>
+      </div>
+      <div class="hud-row">
+        <button class="mode-btn" id="btn-b" onclick="app.setMode('B')">
+          <span class="dot dot-b"></span> B
+        </button>
+        <span class="coord-value" id="coord-b">не задана</span>
+      </div>
+      <div class="hud-divider"></div>
+      <div class="hud-row dist-row">
+        <span class="dist-label">Дистанция</span>
+        <span id="dist-value">—</span>
+      </div>
+      <div id="dist-bar-wrap"><div id="dist-bar"></div></div>
+      <div id="dist-warn" class="hidden">⚠ Превышает 700м</div>
+    </div>
+    <button class="reset-btn" onclick="app.reset()">↺ Сбросить точки</button>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay">
+    <div id="loading-inner">
+      <div id="loading-spinner"></div>
+      <div id="loading-text">Загрузка карты…</div>
+    </div>
+  </div>
+
+  <!-- HINT -->
+  <div id="canvas-hint">Кликните для установки точки <b id="hint-mode">A</b></div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
