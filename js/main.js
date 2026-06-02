@@ -1,18 +1,28 @@
 'use strict';
 
 // ── MAP PRESETS ───────────────────────────────────────────────────────────────
-// Картинки лежат в папке maps/ рядом с index.html
 const MAP_PRESETS = {
-  erangel: { name: 'Erangel', size: 8000, file: 'maps/erangel.webp'  },
-  miramar: { name: 'Miramar', size: 8000, file: 'maps/miramar.png'  },
-  vikendi: { name: 'Vikendi', size: 8000, file: 'maps/vikendi.png'  },
-  rondo:   { name: 'Rondo',   size: 8000, file: 'maps/rondo.png'    },
-  taego:   { name: 'Taego',   size: 8000, file: 'maps/taego.png'    },
-  deston:  { name: 'Deston',  size: 8000, file: 'maps/deston.png'   },
-  sanhok:  { name: 'Sanhok',  size: 4000, file: 'maps/sanhok.png'   },
+  erangel: { name: 'Erangel', size: 8000, file: 'maps/erangel.webp' },
+  miramar: { name: 'Miramar', size: 8000, file: 'maps/miramar.png' },
+  vikendi: { name: 'Vikendi', size: 8000, file: 'maps/vikendi.png' },
+  rondo:   { name: 'Rondo',   size: 8000, file: 'maps/rondo.png'   },
+  taego:   { name: 'Taego',   size: 8000, file: 'maps/taego.png'   },
+  deston:  { name: 'Deston',  size: 8000, file: 'maps/deston.png'  },
+  sanhok:  { name: 'Sanhok',  size: 4000, file: 'maps/sanhok.png'  },
 };
 
 const RADIUS_LIMIT = 700;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// НАСТРОЙКА ТОЧЕК
+// ══════════════════════════════════════════════════════════════════════════════
+const POINT_CONFIG = {
+  A: { icon: 'circle',    color: '#4aaeffbb', size: 11 },
+  B: { icon: 'crosshair', color: '#ffffff', size: 10 },
+};
+
+// Радиус захвата для перемещения уже поставленной точки (в метрах карты)
+const SNAP_RADIUS_M = 127;
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 const app = (() => {
@@ -33,7 +43,6 @@ const app = (() => {
   let dragStart  = null;
   let dragOffset = null;
 
-  // image cache so we don't re-fetch on re-select
   const imageCache = {};
 
   // ── INIT ──────────────────────────────────────────────────────────────────
@@ -47,8 +56,10 @@ const app = (() => {
     canvas.addEventListener('mouseleave', () => { isDragging = false; dragStart = null; });
     canvas.addEventListener('wheel',      onWheel, { passive: false });
 
-    document.getElementById('map-select').addEventListener('change', e => {
-      loadMap(e.target.value);
+    document.getElementById('map-select').addEventListener('click', e => {
+      const option = e.target.closest('.map-option');
+      if (!option) return;
+      loadMap(option.dataset.value);
     });
 
     loadMap('erangel');
@@ -73,9 +84,8 @@ const app = (() => {
     updateInfo();
     updateSizeDisplay();
     resetView();
-    draw(); // show dark bg while loading
+    draw();
 
-    // show loading spinner
     overlay.classList.add('visible');
 
     if (imageCache[key]) {
@@ -85,16 +95,15 @@ const app = (() => {
       return;
     }
 
-    const img = new Image();
-    img.onload = () => {
+    const img    = new Image();
+    img.onload   = () => {
       imageCache[key] = img;
       mapImage = img;
       overlay.classList.remove('visible');
       draw();
     };
-    img.onerror = () => {
+    img.onerror  = () => {
       overlay.classList.remove('visible');
-      // draw placeholder with error message
       draw();
       drawError(preset.name, preset.file);
     };
@@ -129,7 +138,7 @@ const app = (() => {
     return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2);
   }
 
-  // ── EVENTS ────────────────────────────────────────────────────────────────
+  // ── TOUCH / MOUSE HELPERS ─────────────────────────────────────────────────
   function canvasPos(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     return [clientX - r.left, clientY - r.top];
@@ -141,7 +150,7 @@ const app = (() => {
     return canvasPos(e.clientX, e.clientY);
   }
 
-  // touch state
+  // ── TOUCH EVENTS ──────────────────────────────────────────────────────────
   let pinchStartDist   = null;
   let pinchStartZoom   = null;
   let pinchStartOffset = null;
@@ -168,16 +177,16 @@ const app = (() => {
     touchMoved = false;
 
     if (e.touches.length === 1) {
-      isDragging = false;
-      dragStart  = getPos(e);
-      dragOffset = [offsetX, offsetY];
-      pinchStartDist = null;
+      isDragging       = false;
+      dragStart        = getPos(e);
+      dragOffset       = [offsetX, offsetY];
+      pinchStartDist   = null;
     } else if (e.touches.length === 2) {
       pinchStartDist   = touchDist(e.touches);
       pinchStartZoom   = zoomLevel;
       pinchMidStart    = touchMid(e.touches);
       pinchStartOffset = [offsetX, offsetY];
-      dragStart = null;
+      dragStart        = null;
     }
   }, { passive: false });
 
@@ -186,28 +195,28 @@ const app = (() => {
     if (!mapImage) return;
 
     if (e.touches.length === 2 && pinchStartDist !== null) {
-      // pinch-to-zoom
       touchMoved = true;
+
       const currentDist = touchDist(e.touches);
       const scale       = currentDist / pinchStartDist;
-      const newZoom     = Math.max(0.3, Math.min(16, pinchStartZoom * scale));
+      const newZoom     = Math.max(0.8, Math.min(16, pinchStartZoom * scale));
       const mid         = touchMid(e.touches);
-      const ratio       = newZoom / pinchStartZoom;
 
-      offsetX   = mid[0] - (pinchMidStart[0] - pinchStartOffset[0]) * ratio - (pinchMidStart[0] - mid[0]) * ratio;
-      offsetY   = mid[1] - (pinchMidStart[1] - pinchStartOffset[1]) * ratio - (pinchMidStart[1] - mid[1]) * ratio;
+      // FIX (Bug 3): anchor the midpoint correctly using pinchStartOffset
+      offsetX   = pinchStartOffset[0] + (mid[0] - pinchMidStart[0]) - (pinchMidStart[0] - pinchStartOffset[0]) * (newZoom / pinchStartZoom - 1);
+      offsetY   = pinchStartOffset[1] + (mid[1] - pinchMidStart[1]) - (pinchMidStart[1] - pinchStartOffset[1]) * (newZoom / pinchStartZoom - 1);
       zoomLevel = newZoom;
       updateZoomDisplay();
       draw();
+
     } else if (e.touches.length === 1 && dragStart) {
-      // single-finger drag
       const [x, y] = getPos(e);
       const dx = x - dragStart[0], dy = y - dragStart[1];
       if (Math.abs(dx) + Math.abs(dy) > 4) {
         touchMoved = true;
         isDragging = true;
-        offsetX = dragOffset[0] + dx;
-        offsetY = dragOffset[1] + dy;
+        offsetX    = dragOffset[0] + dx;
+        offsetY    = dragOffset[1] + dy;
         draw();
       }
     }
@@ -217,22 +226,13 @@ const app = (() => {
     e.preventDefault();
     if (!mapImage) return;
 
-    if (e.touches.length < 2) {
-      pinchStartDist = null;
-    }
+    if (e.touches.length < 2) pinchStartDist = null;
 
-    // tap to place point — only when single finger and not moved
     if (e.changedTouches.length === 1 && !touchMoved && !isDragging && pinchStartDist === null) {
-      const r = canvas.getBoundingClientRect();
+      const r  = canvas.getBoundingClientRect();
       const cx = e.changedTouches[0].clientX - r.left;
       const cy = e.changedTouches[0].clientY - r.top;
-      const [mx, my] = toMap(cx, cy);
-      if (mx >= 0 && mx <= mapSize && my >= 0 && my <= mapSize) {
-        if (mode === 'A') { pointA = [mx, my]; setMode('B'); }
-        else              { pointB = [mx, my]; setMode('A'); }
-        updateInfo();
-        draw();
-      }
+      placeOrMovePoint(...toMap(cx, cy));
     }
 
     isDragging = false;
@@ -240,7 +240,7 @@ const app = (() => {
     touchMoved = false;
   }, { passive: false });
 
-  // ── MOUSE EVENTS ──
+  // ── MOUSE EVENTS ──────────────────────────────────────────────────────────
   function onMouseDown(e) {
     if (!mapImage) return;
     isDragging = false;
@@ -254,8 +254,8 @@ const app = (() => {
     const dx = x - dragStart[0], dy = y - dragStart[1];
     if (Math.abs(dx) + Math.abs(dy) > 4) {
       isDragging = true;
-      offsetX = dragOffset[0] + dx;
-      offsetY = dragOffset[1] + dy;
+      offsetX    = dragOffset[0] + dx;
+      offsetY    = dragOffset[1] + dy;
       draw();
     }
   }
@@ -263,14 +263,7 @@ const app = (() => {
   function onMouseUp(e) {
     if (!mapImage) return;
     if (!isDragging) {
-      const [cx, cy] = getPos(e);
-      const [mx, my] = toMap(cx, cy);
-      if (mx >= 0 && mx <= mapSize && my >= 0 && my <= mapSize) {
-        if (mode === 'A') { pointA = [mx, my]; setMode('B'); }
-        else              { pointB = [mx, my]; setMode('A'); }
-        updateInfo();
-        draw();
-      }
+      placeOrMovePoint(...toMap(...getPos(e)));
     }
     isDragging = false;
     dragStart  = null;
@@ -281,12 +274,38 @@ const app = (() => {
     e.preventDefault();
     const [cx, cy] = getPos(e);
     const factor   = e.deltaY < 0 ? 1.2 : 1 / 1.2;
-    const newZoom  = Math.max(0.3, Math.min(16, zoomLevel * factor));
+    const newZoom  = Math.max(0.8, Math.min(16, zoomLevel * factor));
     if (newZoom === zoomLevel) return;
     offsetX   = cx - (cx - offsetX) * (newZoom / zoomLevel);
     offsetY   = cy - (cy - offsetY) * (newZoom / zoomLevel);
     zoomLevel = newZoom;
+    // FIX (Bug 1): no longer tries to reassign const POINT_CONFIG.
+    // Crosshair size at high zoom is handled inside drawCrosshair() via
+    // the effectiveSize local variable.
     updateZoomDisplay();
+    draw();
+  }
+
+  // ── PLACE / MOVE POINT ────────────────────────────────────────────────────
+  function placeOrMovePoint(mx, my) {
+    if (mx < 0 || mx > mapSize || my < 0 || my > mapSize) return;
+
+    const nearA = pointA && dist([mx, my], pointA) <= SNAP_RADIUS_M;
+    const nearB = pointB && dist([mx, my], pointB) <= SNAP_RADIUS_M;
+
+    if (nearA && nearB) {
+      if (dist([mx, my], pointA) <= dist([mx, my], pointB)) pointA = [mx, my];
+      else                                                    pointB = [mx, my];
+    } else if (nearA) {
+      pointA = [mx, my];
+    } else if (nearB) {
+      pointB = [mx, my];
+    } else {
+      if (mode === 'A') { pointA = [mx, my]; setMode('B'); }
+      else              { pointB = [mx, my]; setMode('A'); }
+    }
+
+    updateInfo();
     draw();
   }
 
@@ -306,27 +325,23 @@ const app = (() => {
   }
 
   function zoom(factor) {
-    const newZoom = Math.max(0.3, Math.min(16, zoomLevel * factor));
+    const newZoom = Math.max(0.8, Math.min(16, zoomLevel * factor));
     if (newZoom === zoomLevel) return;
     const cx = canvas.width / 2, cy = canvas.height / 2;
-    // pivot around canvas center: keep the map point under center fixed
-    offsetX = cx - (cx - offsetX) * (newZoom / zoomLevel);
-    offsetY = cy - (cy - offsetY) * (newZoom / zoomLevel);
+    offsetX   = cx - (cx - offsetX) * (newZoom / zoomLevel);
+    offsetY   = cy - (cy - offsetY) * (newZoom / zoomLevel);
     zoomLevel = newZoom;
     updateZoomDisplay();
     draw();
   }
 
-  function resetZoom() {
-    resetView();
-    draw();
-  }
+  function resetZoom() { resetView(); draw(); }
 
   function resetView() {
     zoomLevel = 1;
-    const s = baseScale();
-    offsetX = (canvas.width  - mapSize * s) / 2;
-    offsetY = (canvas.height - mapSize * s) / 2;
+    const s   = baseScale();
+    offsetX   = (canvas.width  - mapSize * s) / 2;
+    offsetY   = (canvas.height - mapSize * s) / 2;
     updateZoomDisplay();
   }
 
@@ -348,15 +363,15 @@ const app = (() => {
     if (pointA && pointB) {
       const d    = dist(pointA, pointB);
       const over = d > RADIUS_LIMIT;
-      dv.textContent      = `${Math.round(d)}м`;
-      dv.style.color      = over ? '#ff6b35' : '#b4d24a';
-      db.style.width      = `${Math.min(100, (d / RADIUS_LIMIT) * 100)}%`;
+      dv.textContent   = `${Math.round(d)}м`;
+      dv.style.color   = over ? '#ff6b35' : '#b4d24a';
+      db.style.width   = `${Math.min(100, (d / RADIUS_LIMIT) * 100)}%`;
       db.style.background = over ? '#ff6b35' : '#4cde8a';
       dw.classList.toggle('hidden', !over);
     } else {
-      dv.textContent  = '—';
-      dv.style.color  = '#b4d24a';
-      db.style.width  = '0%';
+      dv.textContent   = '—';
+      dv.style.color   = '#b4d24a';
+      db.style.width   = '0%';
       dw.classList.add('hidden');
     }
   }
@@ -373,11 +388,12 @@ const app = (() => {
       drawGrid();
     }
 
-    if (pointA) drawRadius(pointA, 'rgba(74,173,255,0.75)', 'rgba(74,173,255,0.07)');
-    if (pointA) drawRadiusMin(pointA, 'rgba(255, 57, 57, 0.75)', 'rgba(255, 74, 74, 0.07)');
+    if (pointA) drawRadiusCircle(pointA, RADIUS_LIMIT, 'rgba(74,173,255,0.75)', 'rgba(74,173,255,0.07)');
+    if (pointA) drawRadiusCircle(pointA, 121,          'rgba(255,57,57,0.75)',  'rgba(255,74,74,0.07)');
+
     if (pointA && pointB) drawLine(pointA, pointB);
-    if (pointA) drawPoint(pointA, 'A', '#4aadff');
-    if (pointB) drawPoint(pointB, 'B', '#ff6b35');
+    if (pointA) drawPoint(pointA, POINT_CONFIG.A);
+    if (pointB) drawPoint(pointB, POINT_CONFIG.B);
   }
 
   function drawMapImage() {
@@ -413,32 +429,16 @@ const app = (() => {
     ctx.textAlign = 'left';
 
     for (let i = 1; i <= totalKm; i++) {
-      const [cx]  = toCanvas(i * step - step / 2, 8);
+      const [cx] = toCanvas(i * step - step / 2, 8);
       const [, cy] = toCanvas(8, i * step - step / 2);
       if (cx > 20 && cx < canvas.width  - 20) ctx.fillText(`${i}km`, cx - 12, 14);
       if (cy > 20 && cy < canvas.height - 20) ctx.fillText(`${i}km`, 4, cy + 4);
     }
   }
 
-  function drawRadius(p, strokeColor, fillColor) {
+  function drawRadiusCircle(p, radiusM, strokeColor, fillColor) {
     const [cx, cy] = toCanvas(p[0], p[1]);
-    const rPx      = mapPx(RADIUS_LIMIT);
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth   = 1.5;
-    ctx.setLineDash([6, 4]);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
-
-  function drawRadiusMin(p, strokeColor, fillColor) {
-    const [cx, cy] = toCanvas(p[0], p[1]);
-    const rPx      = mapPx(121);
+    const rPx      = mapPx(radiusM);
 
     ctx.beginPath();
     ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
@@ -489,10 +489,21 @@ const app = (() => {
     ctx.textAlign  = 'left';
   }
 
-  function drawPoint(p, label, color) {
+  // ── ОТРИСОВКА ТОЧЕК ───────────────────────────────────────────────────────
+  function drawPoint(p, cfg) {
     const [cx, cy] = toCanvas(p[0], p[1]);
-    const r = 9;
+    ctx.save();
 
+    if (cfg.icon === 'crosshair') {
+      drawCrosshair(cx, cy, cfg.color, cfg.size);
+    } else {
+      drawCirclePoint(cx, cy, cfg.color, cfg.size, 'A');
+    }
+
+    ctx.restore();
+  }
+
+  function drawCirclePoint(cx, cy, color, r, label) {
     ctx.beginPath();
     ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
     ctx.strokeStyle = color + '40';
@@ -504,13 +515,51 @@ const app = (() => {
     ctx.fillStyle = color;
     ctx.fill();
 
-    ctx.fillStyle    = '#fff';
-    ctx.font         = `700 12px 'Rajdhani', sans-serif`;
-    ctx.textAlign    = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle     = '#fff';
+    ctx.font          = `700 ${Math.round(r * 1.1)}px 'Rajdhani', sans-serif`;
+    ctx.textAlign     = 'center';
+    ctx.textBaseline  = 'middle';
     ctx.fillText(label, cx, cy + 1);
-    ctx.textAlign    = 'left';
-    ctx.textBaseline = 'alphabetic';
+  }
+
+  // FIX (Bug 1 + Bug 2):
+  //   • effectiveSize scales the crosshair at high zoom without touching POINT_CONFIG.
+  //   • Each pass (shadow then main) wraps its own ctx.save() / ctx.restore() so
+  //     stroke state doesn't leak between them.
+  function drawCrosshair(cx, cy, color, size) {
+    // Shrink crosshair when zoomed in far so it stays precise
+    const effectiveSize = zoomLevel > 10 ? Math.max(4, size * (10 / zoomLevel)) : size;
+    const s   = effectiveSize;
+    const gap = s * 0.28;
+
+    // Shadow pass
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth   = 3;
+    ctx.lineCap     = 'round';
+    _crosshairLines(cx, cy, s, gap);
+    ctx.restore();
+
+    // Main pass
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 1.5;
+    ctx.lineCap     = 'round';
+    _crosshairLines(cx, cy, s, gap);
+    ctx.restore();
+
+    // Centre dot
+    ctx.beginPath();
+    ctx.arc(cx, cy, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function _crosshairLines(cx, cy, s, gap) {
+    ctx.beginPath(); ctx.moveTo(cx,       cy - gap); ctx.lineTo(cx,       cy - s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx,       cy + gap); ctx.lineTo(cx,       cy + s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - gap, cy      ); ctx.lineTo(cx - s,   cy    ); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + gap, cy      ); ctx.lineTo(cx + s,   cy    ); ctx.stroke();
   }
 
   function drawError(name, path) {
