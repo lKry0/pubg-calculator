@@ -374,6 +374,7 @@ const app = (() => {
     }
 
     if (pointA) drawRadius(pointA, 'rgba(74,173,255,0.75)', 'rgba(74,173,255,0.07)');
+    if (pointA) drawRadiusMin(pointA, 'rgba(255, 57, 57, 0.75)', 'rgba(255, 74, 74, 0.07)');
     if (pointA && pointB) drawLine(pointA, pointB);
     if (pointA) drawPoint(pointA, 'A', '#4aadff');
     if (pointB) drawPoint(pointB, 'B', '#ff6b35');
@@ -422,6 +423,22 @@ const app = (() => {
   function drawRadius(p, strokeColor, fillColor) {
     const [cx, cy] = toCanvas(p[0], p[1]);
     const rPx      = mapPx(RADIUS_LIMIT);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  function drawRadiusMin(p, strokeColor, fillColor) {
+    const [cx, cy] = toCanvas(p[0], p[1]);
+    const rPx      = mapPx(121);
 
     ctx.beginPath();
     ctx.arc(cx, cy, rPx, 0, Math.PI * 2);
