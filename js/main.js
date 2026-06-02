@@ -3,7 +3,7 @@
 // ── MAP PRESETS ───────────────────────────────────────────────────────────────
 // Картинки лежат в папке maps/ рядом с index.html
 const MAP_PRESETS = {
-  erangel: { name: 'Erangel', size: 8000, file: 'maps/erangel.png'  },
+  erangel: { name: 'Erangel', size: 8000, file: 'maps/erangel.webp'  },
   miramar: { name: 'Miramar', size: 8000, file: 'maps/miramar.png'  },
   vikendi: { name: 'Vikendi', size: 8000, file: 'maps/vikendi.png'  },
   rondo:   { name: 'Rondo',   size: 8000, file: 'maps/rondo.png'    },
@@ -374,7 +374,6 @@ const app = (() => {
     }
 
     if (pointA) drawRadius(pointA, 'rgba(74,173,255,0.75)', 'rgba(74,173,255,0.07)');
-    if (pointB) drawRadius(pointB, 'rgba(255,107,53,0.75)', 'rgba(255,107,53,0.07)');
     if (pointA && pointB) drawLine(pointA, pointB);
     if (pointA) drawPoint(pointA, 'A', '#4aadff');
     if (pointB) drawPoint(pointB, 'B', '#ff6b35');
