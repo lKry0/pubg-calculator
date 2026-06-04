@@ -3,12 +3,12 @@
 // ── MAP PRESETS ───────────────────────────────────────────────────────────────
 const MAP_PRESETS = {
   erangel: { name: 'Erangel', size: 8000, file: 'maps/erangel.webp' },
-  miramar: { name: 'Miramar', size: 8000, file: 'maps/miramar.png' },
-  vikendi: { name: 'Vikendi', size: 8000, file: 'maps/vikendi.png' },
-  rondo:   { name: 'Rondo',   size: 8000, file: 'maps/rondo.png'   },
-  taego:   { name: 'Taego',   size: 8000, file: 'maps/taego.png'   },
-  deston:  { name: 'Deston',  size: 8000, file: 'maps/deston.png'  },
-  sanhok:  { name: 'Sanhok',  size: 4000, file: 'maps/sanhok.png'  },
+  miramar: { name: 'Miramar', size: 8000, file: 'maps/miramar.webp' },
+  vikendi: { name: 'Vikendi', size: 6000, file: 'maps/vikendi.webp' },
+  rondo:   { name: 'Rondo',   size: 8000, file: 'maps/rondo.webp'   },
+  taego:   { name: 'Taego',   size: 8000, file: 'maps/taego.webp'   },
+  deston:  { name: 'Deston',  size: 8000, file: 'maps/deston.webp'  },
+  sanhok:  { name: 'Sanhok',  size: 4000, file: 'maps/sanhok.webp'  },
 };
 
 const RADIUS_LIMIT = 700;
